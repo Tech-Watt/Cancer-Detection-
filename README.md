@@ -56,6 +56,7 @@ To run the code, you will need to have the following Python libraries installed:
 - pandas
 - seaborn
 - matplotlib
+- scikit-learn
 
 You can then run the Jupyter Notebook file `cancer.ipynb` to reproduce the analysis.
 
