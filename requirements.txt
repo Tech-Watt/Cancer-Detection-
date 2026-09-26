@@ -2,3 +2,8 @@ pandas
 seaborn
 matplotlib
 scikit-learn
+numpy
+joblib
+fastapi
+uvicorn
+pydantic

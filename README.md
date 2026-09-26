@@ -1,65 +1,104 @@
-# Cancer Prediction Project
-## Introduction
-This project aims to develop a machine learning model to predict the level of cancer risk based on various patient characteristics and medical history. 
-The project uses a dataset of cancer patients with information on their age, gender, environmental factors, medical history, and symptoms.
+# Cancer Risk Prediction
+
+This project analyzes a public cancer-risk dataset, trains a model that predicts **Low / Medium / High** risk, and serves that model through a REST API.
+
+The model is for research and education. It is **not** a medical diagnosis.
 
 ## Dataset
-The dataset used in this project is named "cancer data.csv" and contains the following features:
 
-- `Patient Id`: Unique identifier for each patient
-- `Age`: Age of the patient
-- `Gender`: Gender of the patient (1 for male, 0 for female)
-- `Air Pollution`: Level of air pollution exposure (1-5 scale)
-- `Alcohol use`: Level of alcohol consumption (1-5 scale)
-- `Dust Allergy`: Level of dust allergy (1-6 scale)
-- `OccuPational Hazards`: Level of occupational hazards (1-5 scale)
-- `Genetic Risk`: Level of genetic risk (1-5 scale)
-- `chronic Lung Disease`: Level of chronic lung disease (1-4 scale)
-- `Balanced Diet`: Level of balanced diet (1-5 scale)
-- `Obesity`: Level of obesity (1-5 scale)
-- `Smoking`: Level of smoking (1-5 scale)
-- `Passive Smoker`: Level of passive smoking exposure (1-5 scale)
-- `Chest Pain`: Level of chest pain (1-10 scale)
-- `Fatigue`: Level of fatigue (1-5 scale)
-- `Weight Loss`: Level of weight loss (1-5 scale)
-- `Shortness of Breath`: Level of shortness of breath (1-10 scale)
-- `Wheezing`: Level of wheezing (1-10 scale)
-- `Swallowing Difficulty`: Level of swallowing difficulty (1-6 scale)
-- `Clubbing of Finger Nails`: Level of clubbing of finger nails (1-2 scale)
-- `Frequent Cold`: Level of frequent cold (1-2 scale)
-- `Dry Cough`: Level of dry cough (1-7 scale)
-- `Snoring`: Level of snoring (1-4 scale)
-- `Level`: Level of cancer risk (Low, Medium, or High)
+`cancer data.csv` has 1,000 patients and no missing values. Each row includes age, gender, lifestyle and exposure scores, symptoms, and a `Level` target.
 
-## Exploratory Data Analysis
-The initial exploratory data analysis involves:
+Features used by the model:
 
-1. Inspecting the data types and checking for missing values
-2. Visualizing the data to identify any patterns or relationships between the features and the target variable (cancer risk level)
+- Age, Gender
+- Air Pollution, Alcohol use, Dust Allergy, OccuPational Hazards
+- Genetic Risk, chronic Lung Disease, Balanced Diet, Obesity
+- Smoking, Passive Smoker
+- Chest Pain, Coughing of Blood, Fatigue, Weight Loss
+- Shortness of Breath, Wheezing, Swallowing Difficulty
+- Clubbing of Finger Nails, Frequent Cold, Dry Cough, Snoring
 
-## Model Development
-The project will involve the following steps for model development:
+`index` and `Patient Id` are identifiers and are not used for training.
 
-1. Preprocessing the data (handling missing values, encoding categorical variables, etc.)
-2. Splitting the data into training and test sets
-3. Training various machine learning models (e.g., logistic regression, decision trees, random forests)
-4. Evaluating the models' performance using appropriate metrics (e.g., accuracy, precision, recall, F1-score)
-5. Selecting the best-performing model and fine-tuning its hyperparameters
+## Setup
 
-## Results
-The final results of the project, including the performance of the selected model and any key insights gained from the analysis, 
-will be reported in this section.
+Use Python 3.13 (the project venv is created with it):
 
-## Usage
-To run the code, you will need to have the following Python libraries installed:
+```bash
+py -3.13 -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-- pandas
-- seaborn
-- matplotlib
-- scikit-learn
+## Analyze
 
-You can then run the Jupyter Notebook file `cancer.ipynb` to reproduce the analysis.
+Exploratory analysis is in the notebook:
 
-## Conclusion
-This project demonstrates the use of machine learning techniques to predict the level of cancer risk based on patient characteristics and medical history. 
-The insights gained from this analysis can be useful for healthcare professionals in identifying high-risk individuals and implementing appropriate preventive measures.
+```bash
+jupyter notebook eda.ipynb
+```
+
+It covers data quality, class balance, age/gender, risk-factor boxplots, and correlations, then writes:
+
+- `figures/01_target_distribution.png`
+- `figures/02_age_gender.png`
+- `figures/03_correlation_heatmap.png`
+- `figures/04_feature_boxplots.png`
+
+`eda.py` only holds shared helpers used by the notebook and `train.py`.
+
+## Train
+
+```bash
+python train.py
+```
+
+`train.py` compares logistic regression and random forest, keeps the forest when scores tie, and saves:
+
+- `models/cancer_risk_model.joblib`
+- `models/metrics.json`
+- `figures/05_confusion_matrix.png`
+- `figures/06_feature_importance.png`
+
+On the held-out test set both models reach accuracy 1.0 and macro F1 1.0. That happens because the 1,000 rows contain only 152 unique feature profiles, and each profile has one label. The API is still useful as a demo; it is not a clinical diagnostic tool.
+
+## API
+
+Start the server after training:
+
+```bash
+uvicorn app:app --reload
+```
+
+Interactive docs: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/health` | Service status |
+| GET | `/features` | Required input fields |
+| GET | `/metrics` | Held-out test metrics |
+| POST | `/predict` | Predict risk level |
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/predict ^
+  -H "Content-Type: application/json" ^
+  -d "{\"Age\": 35, \"Gender\": 1, \"Air Pollution\": 4, \"Alcohol use\": 5, \"Dust Allergy\": 6, \"OccuPational Hazards\": 5, \"Genetic Risk\": 5, \"chronic Lung Disease\": 4, \"Balanced Diet\": 6, \"Obesity\": 7, \"Smoking\": 2, \"Passive Smoker\": 3, \"Chest Pain\": 4, \"Coughing of Blood\": 8, \"Fatigue\": 8, \"Weight Loss\": 7, \"Shortness of Breath\": 9, \"Wheezing\": 2, \"Swallowing Difficulty\": 1, \"Clubbing of Finger Nails\": 4, \"Frequent Cold\": 6, \"Dry Cough\": 7, \"Snoring\": 2}"
+```
+
+Example response:
+
+```json
+{
+  "prediction": "High",
+  "probabilities": {
+    "Low": 0.01,
+    "Medium": 0.04,
+    "High": 0.95
+  },
+  "model_name": "random_forest"
+}
+```
+
+Use the original CSV column names in the JSON body. `Gender` must be `1` or `2`.
